@@ -1,20 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/standings/:groupId",
-      "destination": "https://api.ligab.cl/v1/groups/:groupId/standings"
-    },
-    {
-      "source": "/api/groups/:stageId",
-      "destination": "https://api.ligab.cl/v1/stages/:stageId/groups"
-    },
-    {
-      "source": "/api/match-days/:stageId",
-      "destination": "https://api.ligab.cl/v1/stages/:stageId/match-days?filter=%7B%22include%22%3A%5B%7B%22relation%22%3A%22matches%22%2C%22scope%22%3A%7B%22include%22%3A%5B%7B%22relation%22%3A%22homeTeam%22%7D%2C%7B%22relation%22%3A%22awayTeam%22%7D%2C%7B%22relation%22%3A%22matchSchedule%22%7D%2C%7B%22relation%22%3A%22group%22%7D%5D%7D%7D%5D%7D"
-    },
-    {
-      "source": "/api/tournaments/:leagueId",
-      "destination": "https://api.ligab.cl/v1/leagues/:leagueId/tournaments?filter=%7B%22include%22%3A%5B%7B%22relation%22%3A%22stages%22%7D%5D%7D"
+      "source": "/api/:path*",
+      "destination": "https://api.ligab.cl/v1/:path*"
     }
   ]
 }

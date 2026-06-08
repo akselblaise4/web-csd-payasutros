@@ -7,7 +7,7 @@
   <meta name="description" content="Sitio web oficial de CSD Payasutros. Tabla de posiciones, plantel, fixture, galería y más. ¡Somos Payasutros!">
   <meta name="theme-color" content="#D4213D">
   <link rel="icon" type="image/png" href="logo.png">
-  <link rel="stylesheet" href="styles.css?v=3.0">
+  <link rel="stylesheet" href="styles.css?v=4.0">
 </head>
 <body>
 
@@ -108,8 +108,8 @@
         <div class="section-tag">Clasificación</div>
         <h2 class="section-title">TABLA DE POSICIONES</h2>
         <div class="divider"></div>
-        <p class="section-subtitle">Liga B+ Jueves Rinconada · Apertura 2026 · División Ull</p>
-        <div class="live-badge"><span class="live-dot"></span>Datos en vivo · Liga B</div>
+        <p class="section-subtitle" id="division-label">Detectando división...</p>
+        <div class="live-badge" id="sync-indicator"><span class="live-dot"></span>Datos en vivo · Liga B</div>
       </div>
 
       <div class="standings-table-wrapper animate-on-scroll">
@@ -284,6 +284,12 @@
   <!-- Back to Top -->
   <button class="back-to-top" id="back-to-top" aria-label="Volver arriba">↑</button>
 
-  <script src="app.js?v=3.0"></script>
+    <!-- ═══════════ SYNC OVERLAY ═══════════ -->
+    <div id="sync-overlay" class="sync-overlay hidden">
+      <div class="sync-spinner"></div>
+      <span>Sincronizando datos...</span>
+    </div>
+
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>
