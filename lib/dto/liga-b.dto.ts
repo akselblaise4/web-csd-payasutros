@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const TeamDTOSchema = z.object({
   id: z.number(),
   name: z.string(),
-  teamLogoUrl: z.string().url().nullable().optional(),
+  teamLogoUrl: z.string().nullable().optional(),
 });
 
 export type TeamDTO = z.infer<typeof TeamDTOSchema>;
