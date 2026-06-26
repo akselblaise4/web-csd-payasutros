@@ -1,40 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { Redis } from '@upstash/redis/cloudflare';
-import { Ratelimit } from '@upstash/ratelimit';
 
-// Initialize Upstash Redis and Ratelimit lazily to handle missing env variables gracefully in development
-let authRatelimit: Ratelimit | null = null;
-let standardRatelimit: Ratelimit | null = null;
+// Initialize Upstash Redis client safely to handle missing env variables in development
+let redis: Redis | null = null;
 
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   try {
-    const redis = new Redis({
+    redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-
-    // Capa 3: 5 requests per minute for authentication paths
-    authRatelimit = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit_auth',
-    });
-
-    // Capa 3: 60 requests per minute for other API paths
-    standardRatelimit = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, '60 s'),
-      analytics: true,
-      prefix: 'ratelimit_standard',
     });
   } catch (error) {
     console.error('[Middleware] Failed to initialize Upstash Redis:', error);
   }
 } else {
   console.warn(
-    '[Middleware] ⚠️ UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN env variables are missing. Rate limiting is running in bypass mode.'
+    '[Middleware] ⚠️ UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are missing. Rate limiting is running in bypass mode.'
   );
 }
 
@@ -44,7 +26,6 @@ const getAllowedOrigins = (): string[] => {
   if (allowed) {
     return allowed.split(',').map((o) => o.trim().toLowerCase());
   }
-  // Default fallback for development
   return ['http://localhost:3000'];
 };
 
@@ -53,42 +34,54 @@ export async function middleware(request: NextRequest) {
   const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1';
 
   // --- Capa 3: Distributed Rate Limiting ---
-  if (pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/api/') && redis) {
     let limitReached = false;
-    let limitInfo: { limit: number; remaining: number; reset: number } | null = null;
+    const currentWindow = Math.floor(Date.now() / 60000); // 1 minute window
 
-    if (pathname.startsWith('/api/auth')) {
-      if (authRatelimit) {
-        const result = await authRatelimit.limit(ip);
-        limitReached = !result.success;
-        limitInfo = { limit: result.limit, remaining: result.remaining, reset: result.reset };
+    try {
+      if (pathname.startsWith('/api/auth')) {
+        // Capa 3: 5 requests per minute for authentication paths
+        const key = `ratelimit:auth:${ip}:${currentWindow}`;
+        const count = await redis.incr(key);
+        if (count === 1) {
+          await redis.expire(key, 60);
+        }
+        if (count > 5) {
+          limitReached = true;
+        }
+      } else {
+        // Capa 3: 60 requests per minute for other API paths
+        const key = `ratelimit:std:${ip}:${currentWindow}`;
+        const count = await redis.incr(key);
+        if (count === 1) {
+          await redis.expire(key, 60);
+        }
+        if (count > 60) {
+          limitReached = true;
+        }
       }
-    } else {
-      if (standardRatelimit) {
-        const result = await standardRatelimit.limit(ip);
-        limitReached = !result.success;
-        limitInfo = { limit: result.limit, remaining: result.remaining, reset: result.reset };
-      }
+    } catch (err) {
+      // Fail-open strategy to prevent Redis downtime from locking out real users,
+      // but log the incident immediately for CISO monitoring
+      console.error('[Middleware] Rate limiting check failed:', err);
     }
 
     if (limitReached) {
-      const response = new NextResponse(
+      return new NextResponse(
         JSON.stringify({ error: 'Too many requests. Please try again later.' }),
         {
           status: 429,
           headers: {
             'Content-Type': 'application/json',
-            'Retry-After': limitInfo ? Math.ceil((limitInfo.reset - Date.now()) / 1000).toString() : '60',
+            'Retry-After': '60',
           },
         }
       );
-      return response;
     }
   }
 
   // --- Capa 2: Security Headers & CSP Nonce ---
   // Generate cryptographic nonce for scripts
-  // Using standard Web Crypto API supported in Vercel Edge Runtime
   const nonce = crypto.randomUUID();
 
   // Strict CSP: script-src uses 'nonce-{nonce}' and 'strict-dynamic' to allow scripts added by verified scripts
@@ -112,7 +105,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('content-security-policy', cspHeader);
 
   // Initialize response with modified headers
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
@@ -150,7 +143,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Apply middleware to all API paths and frontend document loads
     '/api/:path*',
     '/((?!_next/static|_next/image|favicon.ico|logo.png|img/|.*\\..*).*)',
   ],
