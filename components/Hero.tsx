@@ -2,14 +2,14 @@
 
 import React from 'react';
 import Countdown from './Countdown';
-import type { MatchDayDTO } from '@/lib/dto/liga-b.dto';
 
 interface HeroProps {
-  matchDays: MatchDayDTO[] | null;
+  targetDate: Date | null;
+  isLive: boolean;
   nextMatchLabel: string;
 }
 
-export default function Hero({ matchDays, nextMatchLabel }: HeroProps) {
+export default function Hero({ targetDate, isLive, nextMatchLabel }: HeroProps) {
   return (
     <section className="hero" id="hero">
       <div className="hero-bg">
@@ -33,7 +33,7 @@ export default function Hero({ matchDays, nextMatchLabel }: HeroProps) {
             className="countdown-match"
             dangerouslySetInnerHTML={{ __html: nextMatchLabel }}
           ></p>
-          <Countdown matchDays={matchDays} />
+          <Countdown targetDate={targetDate} isLive={isLive} />
         </div>
       </div>
 

@@ -1,77 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { MatchDayDTO } from '@/lib/dto/liga-b.dto';
 
 interface CountdownProps {
-  matchDays: MatchDayDTO[] | null;
+  targetDate: Date | null;
+  isLive: boolean;
 }
 
-const TEAM_ID = 3250;
-
-function parseMatchDate(isoString: string) {
-  const [datePart] = isoString.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  return { year, month: month - 1, day };
-}
-
-function buildMatchDateTime(isoDateString: string, scheduleStr?: string | null) {
-  const { year, month, day } = parseMatchDate(isoDateString);
-  let hours = 20, mins = 0;
-  if (scheduleStr) {
-    const parts = scheduleStr.split(':');
-    hours = parseInt(parts[0], 10) || 20;
-    mins = parseInt(parts[1] || '0', 10);
-  }
-  return new Date(year, month, day, hours, mins, 0, 0);
-}
-
-export default function Countdown({ matchDays }: CountdownProps) {
+export default function Countdown({ targetDate, isLive }: CountdownProps) {
   const [timeLeft, setTimeLeft] = useState({
     days: '--',
     hours: '--',
     minutes: '--',
     seconds: '--',
   });
-  const [hasMatch, setHasMatch] = useState(true);
 
   useEffect(() => {
-    if (!matchDays || !Array.isArray(matchDays) || matchDays.length === 0) {
-      setHasMatch(false);
+    if (!targetDate || isLive) {
       return;
     }
-
-    // Extract upcoming matches
-    const matches: Array<{ date: string; schedule?: string | null }> = [];
-    matchDays.forEach((md) => {
-      if (!md.matches) return;
-      md.matches.forEach((m) => {
-        if (m.homeTeamId === TEAM_ID || m.awayTeamId === TEAM_ID) {
-          // Only upcoming (unplayed) matches
-          if (m.homeScore === null && m.awayScore === null) {
-            matches.push({
-              date: md.date,
-              schedule: m.matchSchedule?.schedule,
-            });
-          }
-        }
-      });
-    });
-
-    const upcoming = matches
-      .map((m) => ({
-        targetDate: buildMatchDateTime(m.date, m.schedule),
-      }))
-      .filter((m) => m.targetDate > new Date())
-      .sort((a, b) => a.targetDate.getTime() - b.targetDate.getTime());
-
-    if (upcoming.length === 0) {
-      setHasMatch(false);
-      return;
-    }
-
-    setHasMatch(true);
-    const targetDate = upcoming[0].targetDate;
 
     const tick = () => {
       const diff = targetDate.getTime() - Date.now();
@@ -96,34 +43,30 @@ export default function Countdown({ matchDays }: CountdownProps) {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [matchDays]);
+  }, [targetDate, isLive]);
 
-  if (!hasMatch) {
+  // Case 1: Match is currently live (in progress)
+  if (isLive) {
     return (
-      <div className="countdown">
-        <div className="countdown-item">
-          <div className="countdown-value">--</div>
-          <span className="countdown-unit">Días</span>
-        </div>
-        <span className="countdown-separator">:</span>
-        <div className="countdown-item">
-          <div className="countdown-value">--</div>
-          <span className="countdown-unit">Horas</span>
-        </div>
-        <span className="countdown-separator">:</span>
-        <div className="countdown-item">
-          <div className="countdown-value">--</div>
-          <span className="countdown-unit">Min</span>
-        </div>
-        <span className="countdown-separator">:</span>
-        <div className="countdown-item">
-          <div className="countdown-value">--</div>
-          <span className="countdown-unit">Seg</span>
+      <div className="countdown-live-container">
+        <div className="countdown-live-badge">
+          <span className="live-dot-pulsate"></span>
+          <span>PARTIDO EN JUEGO</span>
         </div>
       </div>
     );
   }
 
+  // Case 2: No upcoming match is scheduled yet
+  if (!targetDate) {
+    return (
+      <div className="countdown-pending-container">
+        <span className="countdown-pending-text">PRÓXIMO PARTIDO POR DEFINIR</span>
+      </div>
+    );
+  }
+
+  // Case 3: Regular countdown to upcoming match
   return (
     <div className="countdown" id="countdown">
       <div className="countdown-item">

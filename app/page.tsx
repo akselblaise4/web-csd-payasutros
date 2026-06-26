@@ -12,6 +12,7 @@ import SyncOverlay from '@/components/SyncOverlay';
 import Lightbox from '@/components/Lightbox';
 
 import type { StandingDTO, MatchDayDTO } from '@/lib/dto/liga-b.dto';
+import { buildMatchDateTime, isMatchInProgress, isMatchUpcoming } from '@/lib/match';
 
 const CONFIG = {
   TEAM_NAME: 'CSD Payasutros',
@@ -276,35 +277,88 @@ export default function Home() {
     return 'No se pudo detectar la división de CSD Payasutros.';
   };
 
-  // Next match text helper for Hero
-  const getNextMatchLabel = () => {
+  // Centralized next match info calculation (including live/in-progress matches)
+  const getNextMatchInfo = () => {
     if (!matchDays || !Array.isArray(matchDays)) {
-      return 'Cargando datos en vivo...';
+      return { match: null, isLive: false, label: 'Cargando datos en vivo...', targetDate: null };
     }
 
-    const matches: Array<{ homeTeamId: number; homeTeam?: any; awayTeam?: any }> = [];
+    const payasutrosMatches: Array<{
+      id: number;
+      homeTeamId: number;
+      awayTeamId: number;
+      homeScore: number | null;
+      awayScore: number | null;
+      groupId: number;
+      grounds?: string | null;
+      homeTeam?: any;
+      awayTeam?: any;
+      matchSchedule?: any;
+      matchDayDate: string;
+      matchDayName: string;
+    }> = [];
+
     matchDays.forEach((md) => {
       if (!md.matches) return;
       md.matches.forEach((m) => {
         if (groupId && m.groupId !== groupId) return;
         if (m.homeTeamId === CONFIG.TEAM_ID || m.awayTeamId === CONFIG.TEAM_ID) {
-          if (m.homeScore === null && m.awayScore === null) {
-            matches.push(m);
-          }
+          payasutrosMatches.push({
+            ...m,
+            matchDayDate: md.date,
+            matchDayName: md.name,
+          });
         }
       });
     });
 
-    if (matches.length > 0) {
-      const next = matches[0];
+    // 1. Check for a match currently in progress (live)
+    const liveMatch = payasutrosMatches.find((m) => isMatchInProgress(m, m.matchDayDate));
+    if (liveMatch) {
+      const opponent = liveMatch.homeTeamId === CONFIG.TEAM_ID ? liveMatch.awayTeam : liveMatch.homeTeam;
+      const opponentName = opponent ? opponent.name.trim() : 'Rival';
+      return {
+        match: liveMatch,
+        isLive: true,
+        label: `¡EN JUEGO! <strong>${CONFIG.TEAM_NAME}</strong> vs ${opponentName}`,
+        targetDate: null,
+      };
+    }
+
+    // 2. Check for the next upcoming match in the future
+    const upcomingMatches = payasutrosMatches
+      .filter((m) => isMatchUpcoming(m, m.matchDayDate))
+      .sort((a, b) => {
+        const dA = buildMatchDateTime(a.matchDayDate, a.matchSchedule?.schedule);
+        const dB = buildMatchDateTime(b.matchDayDate, b.matchSchedule?.schedule);
+        return dA.getTime() - dB.getTime();
+      });
+
+    if (upcomingMatches.length > 0) {
+      const next = upcomingMatches[0];
       const opponent = next.homeTeamId === CONFIG.TEAM_ID ? next.awayTeam : next.homeTeam;
       const opponentName = opponent ? opponent.name.trim() : 'Rival';
       const connectionWord = next.homeTeamId === CONFIG.TEAM_ID ? 'vs' : '@';
-      return `<strong>${CONFIG.TEAM_NAME}</strong> ${connectionWord} ${opponentName}`;
+      const targetDate = buildMatchDateTime(next.matchDayDate, next.matchSchedule?.schedule);
+      return {
+        match: next,
+        isLive: false,
+        label: `<strong>${CONFIG.TEAM_NAME}</strong> ${connectionWord} ${opponentName}`,
+        targetDate,
+      };
     }
 
-    return `<strong>${CONFIG.TEAM_NAME}</strong> — Esperando fixture`;
+    // 3. No matches in progress or upcoming
+    return {
+      match: null,
+      isLive: false,
+      label: `<strong>${CONFIG.TEAM_NAME}</strong> — Esperando fixture`,
+      targetDate: null,
+    };
   };
+
+  const matchInfo = getNextMatchInfo();
+
 
   return (
     <>
@@ -318,7 +372,11 @@ export default function Home() {
 
       <Navbar />
 
-      <Hero matchDays={matchDays} nextMatchLabel={getNextMatchLabel()} />
+      <Hero
+        targetDate={matchInfo.targetDate}
+        isLive={matchInfo.isLive}
+        nextMatchLabel={matchInfo.label}
+      />
 
       <Standings
         standings={standings}

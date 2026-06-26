@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { MatchDayDTO, MatchDTO } from '@/lib/dto/liga-b.dto';
+import { buildMatchDateTime, isMatchPlayed, isMatchInProgress, parseMatchDate } from '@/lib/match';
 
 interface FixtureProps {
   matchDays: MatchDayDTO[] | null;
@@ -10,23 +11,6 @@ interface FixtureProps {
 }
 
 const TEAM_ID = 3250;
-
-function parseMatchDate(isoString: string) {
-  const [datePart] = isoString.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  return { year, month: month - 1, day };
-}
-
-function buildMatchDateTime(isoDateString: string, scheduleStr?: string | null) {
-  const { year, month, day } = parseMatchDate(isoDateString);
-  let hours = 20, mins = 0;
-  if (scheduleStr) {
-    const parts = scheduleStr.split(':');
-    hours = parseInt(parts[0], 10) || 20;
-    mins = parseInt(parts[1] || '0', 10);
-  }
-  return new Date(year, month, day, hours, mins, 0, 0);
-}
 
 function formatMatchDate(isoDateString: string) {
   const { year, month, day } = parseMatchDate(isoDateString);
@@ -70,7 +54,7 @@ export default function Fixture({ matchDays, groupId, isLoading }: FixtureProps)
       });
     });
 
-    const isPlayed = (m: PayasutrosMatch) => m.homeScore !== null && m.awayScore !== null;
+    const isPlayed = (m: PayasutrosMatch) => isMatchPlayed(m, m.matchDayDate);
 
     // Filter according to selection
     let filtered = [...extracted];
@@ -94,7 +78,7 @@ export default function Fixture({ matchDays, groupId, isLoading }: FixtureProps)
     setMatches(filtered);
   }, [matchDays, filter, groupId]);
 
-  const isPlayedMatch = (m: PayasutrosMatch) => m.homeScore !== null && m.awayScore !== null;
+  const isPlayedMatch = (m: PayasutrosMatch) => isMatchPlayed(m, m.matchDayDate);
 
   return (
     <section className="section fixture" id="fixture">
@@ -145,7 +129,9 @@ export default function Fixture({ matchDays, groupId, isLoading }: FixtureProps)
             matches.map((m) => {
               const home = m.homeTeam || { id: m.homeTeamId, name: 'Equipo' };
               const away = m.awayTeam || { id: m.awayTeamId, name: 'Equipo' };
-              const played = isPlayedMatch(m);
+              const played = isMatchPlayed(m, m.matchDayDate);
+              const inProgress = isMatchInProgress(m, m.matchDayDate);
+              const hasScore = m.homeScore !== null && m.awayScore !== null;
               const schedule = m.matchSchedule?.schedule || '';
               const dateStr = formatMatchDate(m.matchDayDate);
               const isHome = home.id === TEAM_ID;
@@ -153,25 +139,41 @@ export default function Fixture({ matchDays, groupId, isLoading }: FixtureProps)
               let centerHTML = null;
               let resultBadge = null;
 
-              if (played) {
+              if (inProgress) {
                 centerHTML = (
-                  <div className="fixture-score">
-                    {m.homeScore} — {m.awayScore}
+                  <div className="fixture-score-live animate-pulse">
+                    EN VIVO
                   </div>
                 );
+                resultBadge = <span className="fixture-result-badge live">En Juego</span>;
+              } else if (played) {
+                if (hasScore) {
+                  centerHTML = (
+                    <div className="fixture-score">
+                      {m.homeScore} — {m.awayScore}
+                    </div>
+                  );
 
-                const homeScore = m.homeScore ?? 0;
-                const awayScore = m.awayScore ?? 0;
-                const homeWin = homeScore > awayScore;
-                const draw = homeScore === awayScore;
-                const payasutrosWin = (isHome && homeWin) || (!isHome && !homeWin && !draw);
+                  const homeScore = m.homeScore ?? 0;
+                  const awayScore = m.awayScore ?? 0;
+                  const homeWin = homeScore > awayScore;
+                  const draw = homeScore === awayScore;
+                  const payasutrosWin = (isHome && homeWin) || (!isHome && !homeWin && !draw);
 
-                if (payasutrosWin) {
-                  resultBadge = <span className="fixture-result-badge win">Victoria</span>;
-                } else if (draw) {
-                  resultBadge = <span className="fixture-result-badge draw">Empate</span>;
+                  if (payasutrosWin) {
+                    resultBadge = <span className="fixture-result-badge win">Victoria</span>;
+                  } else if (draw) {
+                    resultBadge = <span className="fixture-result-badge draw">Empate</span>;
+                  } else {
+                    resultBadge = <span className="fixture-result-badge loss">Derrota</span>;
+                  }
                 } else {
-                  resultBadge = <span className="fixture-result-badge loss">Derrota</span>;
+                  centerHTML = (
+                    <div className="fixture-score-pending">
+                      <span>Pendiente</span>
+                    </div>
+                  );
+                  resultBadge = <span className="fixture-result-badge pending">Por confirmar</span>;
                 }
               } else {
                 centerHTML = <div className="fixture-vs">VS</div>;
@@ -181,7 +183,7 @@ export default function Fixture({ matchDays, groupId, isLoading }: FixtureProps)
               const awayName = (away.name || 'Equipo').trim();
 
               return (
-                <div key={m.id} className={`fixture-card ${played ? 'played' : ''}`}>
+                <div key={m.id} className={`fixture-card ${played ? 'played' : ''} ${inProgress ? 'live' : ''}`}>
                   <div className="fixture-team">
                     {home.id === TEAM_ID ? (
                       <img src="/logo.png" alt="" className="fixture-team-logo" />

@@ -2034,18 +2034,23 @@ ul, ol { list-style: none; }
   }
 
   .countdown {
-    flex-wrap: wrap;
-    gap: var(--space-sm);
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
   }
 
   .countdown-separator {
-    display: none;
+    display: inline-block;
+    font-size: 1.2rem;
+    margin-top: 0;
+    align-self: center;
   }
 
   .countdown-value {
-    font-size: 1.6rem;
-    padding: var(--space-sm);
-    min-width: 50px;
+    font-size: 1.4rem;
+    padding: var(--space-xs) 6px;
+    min-width: 48px;
+    border-radius: var(--radius-sm);
   }
 
   .fixture-tabs {
@@ -2173,4 +2178,107 @@ ul, ol { list-style: none; }
 
 @keyframes loaderFill {
   to { width: 100%; }
+}
+
+/* ── NEW COUNTDOWN & FIXTURE STYLES ── */
+
+/* Live/InProgress Match States */
+.countdown-live-container {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+
+.countdown-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 12px var(--space-2xl);
+  background: rgba(212, 33, 61, 0.12);
+  border: 1px solid var(--red-primary);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  box-shadow: 0 0 25px rgba(212, 33, 61, 0.35);
+  animation: glow 2s infinite;
+}
+
+.live-dot-pulsate {
+  width: 10px;
+  height: 10px;
+  background: var(--red-bright);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--red-bright);
+  animation: pulse 1.5s infinite;
+}
+
+/* Pending Match State */
+.countdown-pending-container {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+
+.countdown-pending-text {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  border: 1px dashed var(--gray-600);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Fixture Score Live state */
+.fixture-score-live {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--red-bright);
+  background: rgba(212, 33, 61, 0.1);
+  border: 1px solid rgba(212, 33, 61, 0.3);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+/* Fixture Score Pending state */
+.fixture-score-pending {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--gray-700);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* Fixture Result Badges for Live & Pending */
+.fixture-result-badge.live {
+  background: rgba(212, 33, 61, 0.15);
+  color: var(--red-bright);
+  border: 1px solid rgba(212, 33, 61, 0.3);
+}
+
+.fixture-result-badge.pending {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Live fixture card styling */
+.fixture-card.live {
+  border-color: rgba(212, 33, 61, 0.3);
+  box-shadow: 0 0 15px rgba(212, 33, 61, 0.1);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(212, 33, 61, 0.02) 100%);
 }
