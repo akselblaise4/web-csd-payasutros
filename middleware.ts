@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
     script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data: https://api.ligab.cl https://*.supabase.co;
+    img-src 'self' data: https://api.ligab.cl https://*.supabase.co https://liga-b.nyc3.digitaloceanspaces.com;
     connect-src 'self' https://api.ligab.cl https://*.supabase.co;
     frame-ancestors 'none';
     object-src 'none';
